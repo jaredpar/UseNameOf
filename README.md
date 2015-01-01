@@ -16,7 +16,7 @@ void M(string text)
 }
 ```
 
-**After **
+**After**
 
 ``` csharp
 void M(string text) 
