@@ -9,9 +9,15 @@ using System.Threading.Tasks;
 
 namespace UseNameOf
 {
-    public sealed class NameOfRewriter : CSharpSyntaxRewriter
+    internal sealed class NameOfRewriter : CSharpSyntaxRewriter
     {
+        private readonly SemanticModel _semanticModel;
         private readonly Dictionary<LiteralExpressionSyntax, NameOfExpressionSyntax> _map = new Dictionary<LiteralExpressionSyntax, NameOfExpressionSyntax>();
+
+        internal NameOfRewriter(SemanticModel semanticModel)
+        {
+            _semanticModel = semanticModel;
+        }
 
         public override SyntaxNode VisitLiteralExpression(LiteralExpressionSyntax node)
         {
@@ -33,9 +39,15 @@ namespace UseNameOf
                 if (expr != null && expr.CSharpKind() == SyntaxKind.StringLiteralExpression)
                 {
                     var stringExpr = (LiteralExpressionSyntax)expr;
-                    _map[stringExpr] = SyntaxFactory.NameOfExpression(
-                        SyntaxFactory.IdentifierName("nameof"),
-                        SyntaxFactory.IdentifierName(stringExpr.Token.ValueText));
+                    var position = stringExpr.GetLocation().SourceSpan.Start;
+                    var identExpr = SyntaxFactory.IdentifierName(stringExpr.Token.ValueText);
+                    var symbolInfo = _semanticModel.GetSpeculativeSymbolInfo(position, identExpr, SpeculativeBindingOption.BindAsExpression);
+                    if (symbolInfo.Symbol != null && symbolInfo.Symbol.Kind == SymbolKind.Parameter)
+                    {
+                        _map[stringExpr] = SyntaxFactory.NameOfExpression(
+                            SyntaxFactory.IdentifierName("nameof"),
+                            identExpr);
+                    }
                 }
             }
 
